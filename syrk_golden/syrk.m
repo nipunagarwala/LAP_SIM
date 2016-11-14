@@ -43,7 +43,7 @@ for (i = 1:num_blocks)
 end
 end
 
-%{
+
 function C_row = blocked_syrk_row(A)
 mc = size(A,1);
 kc = size(A,2);
@@ -51,13 +51,13 @@ C_row = zeros(mc,mc);
 num_blocks = mc/4;
 for (i = 1:num_blocks)
 	A_block = A((i-1)*4+1:i*4,:);
-	A_update = A(1:i*4,:);
+	A_update = A(1:(i-1)*4,:);
 	C_row((i-1)*4+1:i*4,(i-1)*4+1:i*4) = unblocked_syrk(A_block);
 	C_row((i-1)*4+1:i*4,1:(i-1)*4) += A_block*A_update';
 end
 end
-%}
 
+%{
 function C_row = blocked_syrk_row(A)
 mc = size(A,1);
 kc = size(A,2);
@@ -70,4 +70,4 @@ for (i = 1:num_blocks)
 	C_row(mc-i*4+1:mc-(i-1)*4,1:mc-i*4) += A_block*A_update';
 end
 end
-
+%}
