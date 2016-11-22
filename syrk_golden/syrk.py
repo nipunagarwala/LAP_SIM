@@ -30,16 +30,35 @@ def unblocked_syrk(blkA, blkB, nrows, blkSize):
 	return prod
 
 
-''' Blocked version of Symmetric Rank-K update. Divides
+''' Row Major Blocked version of Symmetric Rank-K update. Divides
 A by rows and A.T by columns, and then uses the Unblocked
 version of Symmetric rank-K update to compute the matrix
 product 
 '''
-def blocked_syrk(blkA, nrows, blkSize):
+def blocked_row_syrk(blkA, nrows, blkSize):
 	prod = np.zeros((nrows,nrows))
 	blkATrans = blkA.T
 	for i in range(nrows/blkSize):
 		for j in range(i+1):
+			lr = i*blkSize
+			ur =  (i+1)*blkSize 
+			lc = j*blkSize
+			uc = (j+1)*blkSize 
+			prod[lr:ur,lc:uc] = unblocked_syrk(blkA[lr:ur,:],blkATrans[:,lc:uc], nrows, blkSize)
+			prod[lc:uc,lr:ur] = prod[lr:ur,lc:uc].T
+
+	return prod
+
+''' Column Major Blocked version of Symmetric Rank-K update. Divides
+A by rows and A.T by columns, and then uses the Unblocked
+version of Symmetric rank-K update to compute the matrix
+product 
+'''
+def blocked_col_syrk(blkA, nrows, blkSize):
+	prod = np.zeros((nrows,nrows))
+	blkATrans = blkA.T
+	for j in range(nrows/blkSize):
+		for i in range(j, nrows/blkSize):
 			lr = i*blkSize
 			ur =  (i+1)*blkSize 
 			lc = j*blkSize
@@ -73,12 +92,13 @@ def main():
 	print("Matrix being used for Symmetrix Rank-K update test is {}".format(A))
 	gemmResult = simpleGEMM(A, nRows)
 	unblkRes = unblocked_syrk(A,A.T, nRows, nRows)
-	blkRes = blocked_syrk(A,nRows,blkSize)
+	blkColRes = blocked_col_syrk(A,nRows,blkSize)
+	blkRowRes = blocked_row_syrk(A,nRows,blkSize)
 
 	print("The product of A and A.T is {}".format(gemmResult))
 	print("The difference between the unblocked and naive implementation is {}".format(np.sum((unblkRes - gemmResult)**2)))
-	print("The difference between the blocked and unblocked implementation is {}".format(np.sum((blkRes - unblkRes)**2)))
-
+	print("The difference between the Row blocked and unblocked implementation is {}".format(np.sum((blkRowRes - unblkRes)**2)))
+	print("The difference between the Column blocked and unblocked implementation is {}".format(np.sum((blkColRes - unblkRes)**2)))
 
 
 if __name__ == '__main__':
