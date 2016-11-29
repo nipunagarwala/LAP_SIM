@@ -1,10 +1,10 @@
-int IO::IO_Execute_Matmul (int Global_index, int N, int Mc, int Kc, int Ap, int  Matmul_Current_State, int Latency_Counter_Curr){
+int IO::IO_Execute_SYRK (int Global_index, int N, int Mc, int Kc, int Ap, int  Matmul_Current_State, int Latency_Counter_Curr){
 	switch(SYRK_Current_State){
 		case SYRK_Flush0:
 			//no memory operations
 		break;
 		case SYRK_Flush1;
-			//no memory opertions
+			//no memory operations
 		break;
 		case SYRK_MAC_Flush:
 			//no memory operations but initialize counters for next state
