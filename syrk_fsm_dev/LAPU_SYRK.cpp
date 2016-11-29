@@ -423,13 +423,19 @@ int LAPU::Syrk_Kernel(int Global_index){
 
 	while (1){
 		switch (Syrk_Current_State){
+				
+			//Syrk_Init: Increment counters according to collection of C
+			//The following 3 states govern filling the pipeline, so one step processes...
+			//Syrk_FetchA0: increment counter --> A1. 
+			//Syrk_FetchA1: increment counter --> A2.
+			//Syrk_FetchA2: increment counter --> MAC_BC.
 
 			case Syrk_Init:
-				Kc_Counter_Next=(Kc_Counter_Curr+1);
-					if (Kc_Counter_Curr==(LAPU_Size-1)){
-						Syrk_Next_State=Syrk_FetchA0;
-						Kc_Counter_Next=0;
-						Mc_Counter_Next=0;
+				Kc_Counter_Next = (Kc_Counter_Curr+1);
+					if (Kc_Counter_Curr == (LAPU_Size-1)){
+						Syrk_Next_State = Syrk_FetchA0;
+						Kc_Counter_Next = 0;
+						Mc_Counter_Next = 0;
 					}
 
 					//wait for PEs to get the data
