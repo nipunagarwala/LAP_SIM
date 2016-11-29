@@ -229,6 +229,11 @@ void PE::Dump_PE_Mem (int amount){
 int PE::Execute_Matmul (int Global_index, int Bpj_Counter, int Mc, int Kc, int Ap_Counter, int Matmul_Current_State,int Latency_Counter){
 	if (Global_index == 0) {
 		switch(Matmul_Current_State){
+				
+			//Syrk_Init: Fetch C
+			//Syrk_FetchA0: Fetch first panel of A
+			//Syrk_FetchA1: Write first panel of A to row reg, Fetch second panel of A
+			//Syrk_FetchA2: BC first panel of A to row buses, Write second panel of A to row reg, Fetch third panel of A
 
 			case 0: //Fetch C in RegFile and ACC
 
