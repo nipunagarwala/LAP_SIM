@@ -70,8 +70,8 @@ private:
 
 
 
-	enum Matmul_States { Matmul_Init, Matmul_FetchB, Matmul_FetchA, Matmul_BC0, Matmul_BC, Matmul_MAC_BC, Matmul_MAC_Flush, Matmul_End} Matmul_Current_State, Matmul_Next_State;
-
+	// enum Matmul_States { Matmul_Init, Matmul_FetchB, Matmul_FetchA, Matmul_BC0, Matmul_BC, Matmul_MAC_BC, Matmul_MAC_Flush, Matmul_End} Matmul_Current_State, Matmul_Next_State;
+enum Syrk_States { Syrk_Init, Syrk_FetchA0, Syrk_FetchA1, Syrk_A2, Syrk_MAC_BC, Syrk_Flush0, Syrk_Flush1, Syrk_MAC_Flush, Syrk_End} Syrk_Current_State, Syrk_Next_State;
 
 
 

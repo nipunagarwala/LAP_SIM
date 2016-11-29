@@ -421,7 +421,128 @@ int LAPU::Matmul_Rank_D(int Global_index){
 int LAPU::Syrk_Kernel(int Global_index){
 	
 
+	while (1){
+		switch (Syrk_Current_State){
 
+			case Syrk_Init:
+				Kc_Counter_Next=(Kc_Counter_Curr+1);
+					if (Kc_Counter_Curr==(LAPU_Size-1)){
+						Syrk_Next_State=Syrk_FetchA0;
+						Kc_Counter_Next=0;
+						Mc_Counter_Next=0;
+					}
+
+					//wait for PEs to get the data
+					Latency_Counter_Next=0;
+					Latency_Counter_Curr=0;
+
+			break;
+
+			case Syrk_FetchA0:
+				Kc_Counter_Next=(Kc_Counter_Curr+1);
+				Syrk_Next_State=Syrk_FetchA1;
+			break;
+
+			case Syrk_FetchA1:
+				Kc_Counter_Next=(Kc_Counter_Curr+1);
+				Syrk_Next_State=Syrk_FetchA2;
+			break;
+
+			case Syrk_FetchA2:
+				Kc_Counter_Next=(Kc_Counter_Curr+1);
+				Matmul_Next_State=Syrk_MAC_BC;
+			break;
+
+			case Syrk_MAC_BC:
+
+	/* 1. (i-4) Perform MAC on the values present in registers
+
+	   2. (i-3) Read BC value into register
+
+	   3. (i-2) BC 
+
+	   4. (i-1) Prepare for BC
+
+	   5. i  Pull another row of A_{k} from memory using
+	   		address generation and store in memory
+
+
+	   	On the side, Memory A stores the necessary
+	   	A_{j}^{T} that is being used for the column major
+	   	version of SYRK. It is updated periodically, when
+	   	the column shifts to the next one, then becoming
+	   	A_{j+1}^{T}.
+
+	   	Memory B stores the current block of A being used
+	   	to get the particular 4x4 C_{ij} block. It has dual
+	   	buffering and reads and writes A_{c} values
+	   	constantly, due to its streaming nature.
+
+
+	*/
+
+			Matmul_Next_State=Matmul_MAC_BC;
+
+			Kc_Counter_Next=(Kc_Counter_Curr+1) % Kernel_Size;
+			if (Kc_Counter_Curr== (Kernel_Size -1)){
+				Mc_Counter_Next=(Mc_Counter_Curr+LAPU_Size)% Kernel_Size;
+				if (Mc_Counter_Curr==(Kernel_Size-LAPU_Size)){
+					N_Counter_Next=(N_Counter_Curr+LAPU_Size)% Panel_Size;
+					if (N_Counter_Curr== (Panel_Size -LAPU_Size)){
+                  		Ap_Counter_Next = (Ap_Counter_Curr + 1)%NumofKernel;
+                  		if (Ap_Counter_Curr == NumofKernels - 1){
+							startCntr += 1
+							if(startCntr == NumofKernels - 1) {
+								Syrk_Next_State = Syrk_flush_0
+							} else {
+								Ap_Counter_Next = 0
+							}
+                  		}
+                	}
+
+				}
+
+			}
+
+			break;
+
+			case Syrk_Flush0:
+				SYRK_Next_State = SYRK_Flush1;
+			break;
+
+			case Syrk_Flush1:
+				SYRK_Next_State = SYRK_MAC_Flush;
+			break;
+
+			case Syrk_MAC_Flush:
+				Latency_Counter_Next = Lateny_Counter_Curr+1;
+				if (Latency_Counter_Curr < (FMA_Latency - 1)){
+					SYRK_Next_State = SYRK_MAC_Flush;
+				}
+				else{
+					SYRK_Next_State = SYRK_End;
+					Latency_Counter_Next = 0;
+				}
+			break;
+			case Syrk_End:
+				if Last_Sending == LAPU_Size {
+					done = true;
+				}
+				Last_Sending++;
+				//Reset all the counters
+				Kc_Counter_Next = 0;
+				Kc_Counter_Curr = 0;
+				Mc_Counter_Next = 0;
+				Mc_Counter_Curr = 0;
+				N_Counter_Curr = 0;
+				N_Counter_Next = 0;
+			break;
+
+
+
+
+		}
+	}
 
 }
 
