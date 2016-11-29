@@ -115,6 +115,8 @@ int LAPU::Flush_Mem_New( double **& Input_matrix, int row_number, int column_num
 
 int LAPU::Assign_input_Matrix( double **& matrix_A, double **& matrix_B, double **& matrix_C){
 
+	//conditional for which operation...
+
 	Matrix_A=matrix_A;
 	Matrix_B=matrix_B;
 	Matrix_C=matrix_C;
@@ -418,236 +420,197 @@ int LAPU::Matmul_Rank_D(int Global_index){
 */
 
 
-int LAPU::Syrk_Kernel(int Global_index){
-	
-
-
-
-}
-
-
-
-
-
-
 int LAPU::Matmul_Kernel(int Global_index){
 
-	while (1){
+	while (1) {
 
-			switch (Matmul_Current_State){
+		switch (Matmul_Current_State){
 
-				case Matmul_Init:
+			case Matmul_Init:
 
-					Kc_Counter_Next=(Kc_Counter_Curr+1);
-					if (Kc_Counter_Curr==(LAPU_Size-1)){
+				Kc_Counter_Next=(Kc_Counter_Curr+1);
+				if (Kc_Counter_Curr==(LAPU_Size-1)){
+					if (Global_index == 0) {
 						Matmul_Next_State=Matmul_FetchB;
-						Kc_Counter_Next=0;
-						Mc_Counter_Next=0;
-
+					} else if (Global_index == 1) {
+						Matmul_Next_State=Matmul_FetchA0;
 					}
-
-					//wait for PEs to get the data
-					Latency_Counter_Next=0;
-					Latency_Counter_Curr=0;
-
-
-
-				break;
-
-
-				case Matmul_FetchB:
-
-					Kc_Counter_Next=(Kc_Counter_Curr+1);
-
-					if (Kc_Counter_Curr==(Kernel_Size-1)){ //bus latency is 1
-						Matmul_Next_State=Matmul_FetchA;
-						Kc_Counter_Next=0;
-						Mc_Counter_Next=0;
-
-					}
-
-				break;
-
-
-				case Matmul_FetchA:
-          
-          //Mochamad --> This was updated by Ardavan
-  
-
-					/*
-					Kc_Counter_Next=(Kc_Counter_Curr+1) % Kernel_Size;
-					Matmul_Next_State=Matmul_FetchA;
-
-					if (Kc_Counter_Curr== (Kernel_Size -1)){
-
-						Mc_Counter_Next=(Mc_Counter_Curr+LAPU_Size)% Kernel_Size;
-						//Mc_Counter_Next=(Mc_Counter_Curr+1)% Kernel_Size;
-
-						if (Mc_Counter_Curr==(Kernel_Size-LAPU_Size)){
-						//if (Mc_Counter_Curr==(Kernel_Size-1)){
-							Matmul_Next_State=Matmul_BC0;
-							//Matmul_Next_State=Matmul_End;
-							Kc_Counter_Next=0;
-							Mc_Counter_Next=0;
-
-						}
-					}
-					 */
-
-
-					Kc_Counter_Next=(Kc_Counter_Curr+LAPU_Size) % Kernel_Size;
-					Matmul_Next_State=Matmul_FetchA;
-
-					if (Kc_Counter_Curr== (Kernel_Size -LAPU_Size)){
-
-						Mc_Counter_Next=(Mc_Counter_Curr+1)% Kernel_Size;
-						//Mc_Counter_Next=(Mc_Counter_Curr+1)% Kernel_Size;
-
-						if (Mc_Counter_Curr==(Kernel_Size-1)){
-						//if (Mc_Counter_Curr==(Kernel_Size-1)){
-							Matmul_Next_State=Matmul_BC0;
-							//Matmul_Next_State=Matmul_End;
-							Kc_Counter_Next=0;
-							Mc_Counter_Next=0;
-
-						}
-					}
-
-
-				break;
-
-				case Matmul_BC0: // Write_Row_Reg<-SRAM[A(0,0)] in the previous state
-					// just BC the 0th
-					// and read the 1st from the SRAM
-					//Nothing is on the bus
-					//Matmul_Next_State=Matmul_End;
-					Matmul_Next_State=Matmul_BC;
-
-				break;
-
-
-				case Matmul_BC:  // it loops equal to bus delay for future
-
-					Matmul_Next_State= Matmul_MAC_BC;
-					Kc_Counter_Next=Kc_Counter_Curr+1;
-
-				break;
-
-				case Matmul_MAC_BC:
-
-						Matmul_Next_State=Matmul_MAC_BC;
-
-            /*cout << "Kc and Mc in FSM are" << Kc_Counter_Curr 
-                 << " " << Mc_Counter_Curr << endl;
-            getchar();*/
-
-            //Added one more inner if statement, for multiple kernels of A
-
-						Kc_Counter_Next=(Kc_Counter_Curr+1) % Kernel_Size;
-						if (Kc_Counter_Curr== (Kernel_Size -1)){
-							Mc_Counter_Next=(Mc_Counter_Curr+LAPU_Size)% Kernel_Size;
-							if (Mc_Counter_Curr==(Kernel_Size-LAPU_Size)){
-								N_Counter_Next=(N_Counter_Curr+LAPU_Size)% Panel_Size;
-								if (N_Counter_Curr== (Panel_Size -LAPU_Size)){
-                  Ap_Counter_Next = (Ap_Counter_Curr + 1)%NumofKernel;
-                  if (Ap_Counter_Curr == NumofKernel - 1){
-								  	Matmul_Next_State=Matmul_MAC_Flush;
-                  }
-                }
-
-							}
-
-						}
-
-
-				break;
-
-				case Matmul_MAC_Flush:
-        
-          //updated by Mochamad 
-          
-          //Kc_Counter_Next=(Kc_Counter_Curr+1) % Kernel_Size;
-          
-
-          //This is basically, we want to wait for the last 4 elements which are still in the pipeling
-          //That is why we wait until it reacehs the FMA Latency
-          //If reaches, then move to the end state
-
-
-					Latency_Counter_Next=Latency_Counter_Curr+1;
-
-					if (Latency_Counter_Curr< (FMA_Latency-1))
-						Matmul_Next_State=Matmul_MAC_Flush;
-					else{
-						Matmul_Next_State=Matmul_End;
-						Latency_Counter_Next=0;
-					}
-				break;
-
-
-				case Matmul_End:
-
-          //getchar();
-        
-          //here, we count the last sending
-          //If all last 4 elements have been sent, then put the done signal as true
-          //Later if done signal is true and the state machine is in Matmul_End, then we return
-          //cycle consumption
-
-          if (Last_Sending==LAPU_Size) done =true;
-          
-          Last_Sending++;
-
 					Kc_Counter_Next=0;
-					Kc_Counter_Curr=0;
-					Mc_Counter_Curr=0;
 					Mc_Counter_Next=0;
-					N_Counter_Curr=0;
-					N_Counter_Next=0;
-
-				break;
-
-
-			}
-
-			if (Print_State_Machines==1){
-				cout<<"==============================";
-				cout<<"Cycle"<<Cycles_Passed<<endl;
-			//	char test2;
-			//	cout<<"Press Enter"<<endl;
-			//	cin>>test2;
-				Dump_Matmul_SMachine();
-			}
-			for (i=0;i<Size;i++)
-				for (j=0;j<Size;j++){
-					PE_Array[i][j].Execute_Matmul (Global_index, N_Counter_Curr, Mc_Counter_Curr, Kc_Counter_Curr, Ap_Counter_Curr, Matmul_Current_State, Latency_Counter_Curr);
-					// We pass this Routine an the current state of this routine to PE
 				}
 
-			//Sqrt_Unit->Execute(Global_index, Counter_Curr, Latency_Counter_Curr,
-				//	LAPU_Rank_Update, Gemm_Current_State, State_Start ); // TODO fix the input;
+				//wait for PEs to get the data
+				Latency_Counter_Next=0;
+				Latency_Counter_Curr=0;
 
-			Mem_IF->IO_Execute_Matmul (Global_index, N_Counter_Curr, Mc_Counter_Curr, Kc_Counter_Curr, Ap_Counter_Curr, Matmul_Current_State, Latency_Counter_Curr);
+			break;
 
-			 if (((Matmul_Current_State==Matmul_End) && done) /*|| Ap_Counter_Curr*/ ){
-				 Matmul_Current_State=Matmul_Init;
-				 Matmul_Next_State=Matmul_Init;
-				 return Cycles_Passed;
-			 }
-			Dump_Row_Buses();
-			Dump_Column_Buses();
+			case Matmul_FetchA0:
+				Kc_Counter_Next=(Kc_Counter_Curr+1);
+				Matmul_Next_State=Matmul_FetchA1;
+			break;
 
-			Drive_Buses(); // Can it be a part of Cycle function? I remember I just separated it for readability
-			// It does not matter which one comes first Drive_Bus or Cycle;
+			case Matmul_FetchA1:
+				Kc_Counter_Next=(Kc_Counter_Curr+1);
+				Matmul_Next_State=Matmul_FetchA2;
+			break;
 
-			/*if (Kc_Counter_Curr==0 && Matmul_Current_State==Matmul_MAC_BC) {
-				getchar();
-			}*/
-			Cycle();
+			case Matmul_FetchA2:
+				Kc_Counter_Next=(Kc_Counter_Curr+1);
+				Matmul_Next_State=Matmul_FetchA3;
+			break;
 
-      //if(Ap_Counter_Curr && !Kc_Counter_Curr)getchar();
+			case Matmul_FetchA3:
+				Kc_Counter_Next=(Kc_Counter_Curr+1);
+				Matmul_Next_State=Matmul_MAC_BC;
+			break;
+
+			case Matmul_FetchB:
+
+				Kc_Counter_Next=(Kc_Counter_Curr+1);
+
+				if (Kc_Counter_Curr==(Kernel_Size-1)){ //bus latency is 1
+					Matmul_Next_State=Matmul_FetchA;
+					Kc_Counter_Next=0;
+					Mc_Counter_Next=0;
+				}
+			break;
 
 
-	    	}
-	    return 0;
-    }
+			case Matmul_FetchA:
+
+				Kc_Counter_Next = (Kc_Counter_Curr + LAPU_Size) % Kernel_Size;
+				Matmul_Next_State=Matmul_FetchA;
+
+				if (Kc_Counter_Curr == (Kernel_Size - LAPU_Size)){
+
+					Mc_Counter_Next=(Mc_Counter_Curr+1)% Kernel_Size;
+
+					if (Mc_Counter_Curr==(Kernel_Size-1)){
+					
+						Matmul_Next_State=Matmul_BC0;
+						Kc_Counter_Next=0;
+						Mc_Counter_Next=0;
+
+					}
+				}
+			break;
+
+			case Matmul_BC0: // Write_Row_Reg<-SRAM[A(0,0)] in the previous state
+				// just BC the 0th
+				// and read the 1st from the SRAM
+				//Nothing is on the bus
+				//Matmul_Next_State=Matmul_End;
+				Matmul_Next_State=Matmul_BC;
+			break;
+
+
+			case Matmul_BC:  // it loops equal to bus delay for future
+
+				Matmul_Next_State= Matmul_MAC_BC;
+				Kc_Counter_Next=Kc_Counter_Curr+1;
+			break;
+
+			case Matmul_MAC_BC:
+
+					Matmul_Next_State=Matmul_MAC_BC;
+
+			        /*cout << "Kc and Mc in FSM are" << Kc_Counter_Curr 
+			             << " " << Mc_Counter_Curr << endl;
+			        getchar();*/
+
+			        //Added one more inner if statement, for multiple kernels of A
+
+					Kc_Counter_Next=(Kc_Counter_Curr+1) % Kernel_Size;
+					if (Kc_Counter_Curr== (Kernel_Size -1)){
+						Mc_Counter_Next=(Mc_Counter_Curr+LAPU_Size)% Kernel_Size;
+						if (Mc_Counter_Curr==(Kernel_Size-LAPU_Size)){
+							N_Counter_Next=(N_Counter_Curr+LAPU_Size)% Panel_Size;
+							if (N_Counter_Curr== (Panel_Size -LAPU_Size)){
+              					Ap_Counter_Next = (Ap_Counter_Curr + 1)%NumofKernel;
+              					if (Ap_Counter_Curr == NumofKernel - 1){
+							  		Matmul_Next_State=Matmul_MAC_Flush;
+              					}
+            				}
+						}
+					}
+			break;
+
+			case Matmul_MAC_Flush:
+    
+      			//updated by Mochamad 
+      
+      			//Kc_Counter_Next=(Kc_Counter_Curr+1) % Kernel_Size;
+
+      			//This is basically, we want to wait for the last 4 elements which are still in the pipeling
+      			//That is why we wait until it reacehs the FMA Latency
+		      	//If reaches, then move to the end state
+				Latency_Counter_Next=Latency_Counter_Curr+1;
+
+				if (Latency_Counter_Curr< (FMA_Latency-1))
+					Matmul_Next_State=Matmul_MAC_Flush;
+				else {
+					Matmul_Next_State=Matmul_End;
+					Latency_Counter_Next=0;
+				}
+			break;
+
+
+			case Matmul_End:
+		      //here, we count the last sending
+		      //If all last 4 elements have been sent, then put the done signal as true
+		      //Later if done signal is true and the state machine is in Matmul_End, then we return
+		      //cycle consumption
+
+				if (Last_Sending==LAPU_Size) done = true;
+			      
+			    Last_Sending++;
+
+				Kc_Counter_Next=0;
+				Kc_Counter_Curr=0;
+				Mc_Counter_Curr=0;
+				Mc_Counter_Next=0;
+				N_Counter_Curr=0;
+				N_Counter_Next=0;
+			break;
+		}
+
+		if (Print_State_Machines==1){
+			cout<<"==============================";
+			cout<<"Cycle"<<Cycles_Passed<<endl;
+		//	char test2;
+		//	cout<<"Press Enter"<<endl;
+		//	cin>>test2;
+			Dump_Matmul_SMachine();
+		}
+
+		for (i=0;i<Size;i++)
+			for (j=0;j<Size;j++){
+				PE_Array[i][j].Execute_Matmul (Global_index, N_Counter_Curr, Mc_Counter_Curr, Kc_Counter_Curr, Ap_Counter_Curr, Matmul_Current_State, Latency_Counter_Curr);
+				// We pass this Routine and the current state of this routine to PE
+			}
+
+		//Sqrt_Unit->Execute(Global_index, Counter_Curr, Latency_Counter_Curr,
+			//	LAPU_Rank_Update, Gemm_Current_State, State_Start ); // TODO fix the input;
+
+		Mem_IF->IO_Execute_Matmul (Global_index, N_Counter_Curr, Mc_Counter_Curr, Kc_Counter_Curr, Ap_Counter_Curr, Matmul_Current_State, Latency_Counter_Curr);
+
+		if (((Matmul_Current_State==Matmul_End) && done) /*|| Ap_Counter_Curr*/ ){
+			 Matmul_Current_State=Matmul_Init;
+			 Matmul_Next_State=Matmul_Init;
+			 return Cycles_Passed;
+		}
+
+		Dump_Row_Buses();
+		Dump_Column_Buses();
+		Drive_Buses(); // Can it be a part of Cycle function? I remember I just separated it for readability
+		// It does not matter which one comes first Drive_Bus or Cycle;
+
+		/*if (Kc_Counter_Curr==0 && Matmul_Current_State==Matmul_MAC_BC) {
+			getchar();
+		}*/
+		Cycle();
+	}
+  	//if(Ap_Counter_Curr && !Kc_Counter_Curr)getchar();
+	return 0;
+}
