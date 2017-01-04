@@ -423,13 +423,19 @@ int LAPU::Syrk_Kernel(int Global_index){
 
 	while (1){
 		switch (Syrk_Current_State){
+				
+			//Syrk_Init: Increment counters according to collection of C
+			//The following 3 states govern filling the pipeline, so one step processes...
+			//Syrk_FetchA0: increment counter --> A1. 
+			//Syrk_FetchA1: increment counter --> A2.
+			//Syrk_FetchA2: increment counter --> MAC_BC.
 
 			case Syrk_Init:
-				Kc_Counter_Next=(Kc_Counter_Curr+1);
-					if (Kc_Counter_Curr==(LAPU_Size-1)){
-						Syrk_Next_State=Syrk_FetchA0;
-						Kc_Counter_Next=0;
-						Mc_Counter_Next=0;
+				Kc_Counter_Next = (Kc_Counter_Curr+1);
+					if (Kc_Counter_Curr == (LAPU_Size-1)){
+						Syrk_Next_State = Syrk_FetchA0;
+						Kc_Counter_Next = 0;
+						Mc_Counter_Next = 0;
 					}
 
 					//wait for PEs to get the data
@@ -505,15 +511,26 @@ int LAPU::Syrk_Kernel(int Global_index){
 			}
 
 			break;
-
+			/*
+			1.  (i-2) MAC
+			2.  (i-1) Broadcast A^T
+			3.  (i) Prepare for BC
+			*/
 			case Syrk_Flush0:
 				SYRK_Next_State = SYRK_Flush1;
 			break;
-
+			
+			/*
+			1.  (i-1) MAC
+			2.  (i) Broadcast A^T
+			*/
 			case Syrk_Flush1:
 				SYRK_Next_State = SYRK_MAC_Flush;
 			break;
-
+				
+			/*
+			1.  (i) MAC, wait for last MAC to finish
+			*/
 			case Syrk_MAC_Flush:
 				Latency_Counter_Next = Lateny_Counter_Curr+1;
 				if (Latency_Counter_Curr < (FMA_Latency - 1)){
@@ -524,6 +541,10 @@ int LAPU::Syrk_Kernel(int Global_index){
 					Latency_Counter_Next = 0;
 				}
 			break;
+				
+			/*
+			1.  Write result of last Cout calculated to memory
+			*/
 			case Syrk_End:
 				if Last_Sending == LAPU_Size {
 					done = true;
