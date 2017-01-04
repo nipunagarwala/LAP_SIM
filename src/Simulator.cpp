@@ -12,7 +12,7 @@
 #include <fstream>
 #include <assert.h>
 #include "Parameters.h"
-#include "LAPU.h"
+#include "LAPU_SYRK.h"
 
 using namespace std;
 
@@ -233,12 +233,12 @@ int Global_Gemm( double **& A, double **& B, double **& C){
 //	int Column_Block_index=0;
 
 	Accelerator->Assign_input_Matrix(A,B,C);
-	Accelerator->Matmul_Kernel(0);
+  // Accelerator->Initialize_Mem()
+	// Accelerator->Matmul_Kernel(0);
+  Accelerator->Syrk_Kernel(0, A, true);
 
 	return Accelerator->Return_Cycle_Count();
 }
-
-
 
 
 
@@ -254,8 +254,6 @@ void GEMM_Simulation(LAPU * Accelerator){
 	cout<<"Cycles="<<x <<endl;
 
 }
-
-
 
 
 

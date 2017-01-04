@@ -1,7 +1,7 @@
 CC=g++
 CFLAGS=-c -Wall
 LDFLAGS=
-SIM_SOURCES= FMA.cpp Inv_Sqrt.cpp LAPU.cpp IO.cpp PE.cpp Reg_File.cpp Simulator.cpp
+SIM_SOURCES= FMA.cpp Inv_Sqrt.cpp LAPU_SYRK.cpp IO_SYRK.cpp PE_SYRK.cpp Reg_File.cpp Simulator.cpp
 MAT_SOURCES=matrix_maker.cpp
 
 SIM_OBJECTS=$(SIM_SOURCES:.cpp=.o)
